@@ -6,7 +6,6 @@ from .models import Courier
 class CourierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courier
-        # list_serializer_class = CouriersListSerializer
         fields = '__all__'
 
 

@@ -14,5 +14,9 @@ class Courier(models.Model):
         ('car', 50),
     ]
     courier_type = models.CharField(verbose_name='Тип курьера', max_length=255, choices=COURIER_TYPE_CHOICES)
-    #regions = models.ManyToManyField(Region, verbose_name='Идентификаторы районов', null=True, auto_created=True)
-    #regions = list()
+    # regions = models.ManyToManyField(Region, verbose_name='Идентификаторы районов', null=True, auto_created=True)
+    regions = models.JSONField(verbose_name='Идентификаторы регионов')
+    working_hours = models.JSONField(verbose_name='Рабочие часы')
+
+
+
