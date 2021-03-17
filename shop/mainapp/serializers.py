@@ -9,12 +9,11 @@ class CourierSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Courier
-        fields = '__all__'
+        exclude = ['assign_time', 'complete_time']
 
+
+class CourierUpdateSerializer(CourierSerializer):
     def validate(self, data):
-        """
-        Check that the start is before the stop.
-        """
         for field in self.initial_data:
             if field not in ['courier_type', 'regions', 'working_hours']:
                 raise serializers.ValidationError(f"Redundant field {field}")
@@ -28,7 +27,7 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         # fields = '__all__'
-        exclude = ['taken_by']
+        exclude = ['taken_by', 'is_done']
 
 
 class DataObject:
@@ -68,3 +67,17 @@ class OrdersListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = '__all__'
+
+
+# class DataObject:
+#     def __init__(self, data):
+#         self.data = data
+
+class OrdersAssignSerializer(serializers.Serializer):
+    courier_id = serializers.IntegerField(min_value=0)
+
+
+class OrderCompleteSerializer(serializers.Serializer):
+    courier_id = serializers.IntegerField(min_value=0)
+    order_id = serializers.IntegerField(min_value=0)
+    complete_time = serializers.DateTimeField()
