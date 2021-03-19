@@ -7,9 +7,18 @@ class CourierSerializer(serializers.ModelSerializer):
     regions = serializers.ListField(child=serializers.IntegerField(min_value=0))
     working_hours = serializers.ListField(child=serializers.CharField(min_length=11, max_length=11))
 
+    # time_regions = serializers.DictField(child=serializers.IntegerField(min_value=0, allow_null=True), required=False,
+    #                                      default=dict)
+
     class Meta:
         model = Courier
-        exclude = ['assign_time', 'complete_time']
+        # fields = '__all__'
+        exclude = ['complete_time', 'assign_time', 'time_regions', 'finished_amount_regions', 'earning_coef',
+                   'total_earning']
+
+    # def create(self, validated_data):
+    #     raise Exception(validated_data)
+    #     pass
 
 
 class CourierUpdateSerializer(CourierSerializer):
