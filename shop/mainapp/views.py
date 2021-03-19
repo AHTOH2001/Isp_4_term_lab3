@@ -5,9 +5,8 @@ from .serializers import CouriersListSerializer, CouriersCreateSerializer, Order
     CourierUpdateSerializer, OrdersAssignSerializer, OrderCompleteSerializer
 from .models import Courier, Order
 from datetime import datetime
-import decimal
 from django.utils import timezone
-from .utils import valid_order_for_courier
+from .utils import valid_orders_for_courier
 
 
 class CouriersCreateView(generics.CreateAPIView):
@@ -35,7 +34,12 @@ class OrdersCreateView(generics.CreateAPIView):
 
 class OrdersListView(generics.ListAPIView):
     serializer_class = OrdersListSerializer
-    queryset = Order.objects.all().order_by('weight')
+    queryset = Order.objects.filter(is_done=False).order_by('weight')
+
+
+class OrdersRawListView(generics.ListAPIView):
+    serializer_class = OrdersListSerializer
+    queryset = Order.objects.all()
 
 
 class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -43,19 +47,21 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Courier.objects.all()
 
     def patch(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        courier = self.get_object()
+        serializer = self.get_serializer(courier, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        new_instance = serializer.save()
-        taken_orders = Order.objects.filter(taken_by=instance.courier_id, is_done=False)
+        serializer.save()
+        taken_orders = Order.objects.filter(taken_by=courier.courier_id, is_done=False)
+        valid_orders = valid_orders_for_courier(courier, taken_orders)
+
         for order in taken_orders:
-            if not valid_order_for_courier(instance, order):
+            if order not in valid_orders:
                 Order.objects.filter(order_id=order.order_id).update(taken_by=None)
 
-        if getattr(instance, '_prefetched_objects_cache', None):
+        if getattr(courier, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
-            instance._prefetched_objects_cache = {}
+            courier._prefetched_objects_cache = {}
 
         return Response(serializer.data)
 
@@ -67,7 +73,7 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if courier.time_regions is not None:
             res['rating'] = round((60 * 60 - min(min(courier.time_regions.values()), 60 * 60)) / (60 * 60) * 5, 2)
 
-        res['total_earning'] = courier.total_earning
+        res['earning'] = courier.earning
 
         return Response(res, status=status.HTTP_200_OK)
 
@@ -85,52 +91,23 @@ def orders_assign(request):
             return Response({'courier_id': [f'Courier with id {request.data["courier_id"]} does not exist']},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        courier_weight = decimal.Decimal(courier.TYPE_TO_VALUE[courier.courier_type])
-        orders = Order.objects.filter(is_done=False).order_by('weight')
-        res_orders = []
-        before_taken_amount = 0
-        collected_weight = decimal.Decimal('0')
+        Order.objects.filter(taken_by=courier.courier_id).update(taken_by=None)
+        valid_orders = valid_orders_for_courier(courier, Order.objects.filter(is_done=False, taken_by=None))
 
-        for order in orders:
-            if order.taken_by == courier:
-                before_taken_amount += 1
-                order.taken_by = None
-                Order.objects.filter(order_id=order.order_id).update(taken_by=None)
-
-            if valid_order_for_courier(courier, order):
-            if order.taken_by is None:
-                if order.weight <= courier_weight - collected_weight:
-                    if order.region in courier.regions:
-                        order_time_ranges = [
-                            ((datetime.strptime(str_time[:5], '%H:%M')), (datetime.strptime(str_time[6:], '%H:%M'))) for
-                            str_time in order.delivery_hours]
-                        courier_time_ranges = [
-                            ((datetime.strptime(str_time[:5], '%H:%M')), (datetime.strptime(str_time[6:], '%H:%M'))) for
-                            str_time in courier.working_hours]
-                        success = False
-                        for order_time_l, order_time_r in order_time_ranges:
-                            for courier_time_l, courier_time_r in courier_time_ranges:
-                                if order_time_l <= courier_time_l <= order_time_r or order_time_l <= courier_time_r <= order_time_r:
-                                    success = True
-                        if success:
-                            collected_weight = collected_weight + order.weight
-                            res_orders.append({'id': order.order_id})
-
-        if before_taken_amount == 0 and courier.assign_time is None:
-            assign_time = timezone.now()
+        if len(valid_orders) == 0:
+            return Response({'orders': []}, status=status.HTTP_200_OK)
         else:
-            assign_time = courier.assign_time
+            if courier.assign_time is None:
+                assign_time = timezone.now()
+            else:
+                assign_time = courier.assign_time
 
-        Courier.objects.filter(courier_id=courier.courier_id).update(
-            earning_coef=Courier.TYPE_TO_COEF[courier.courier_type])
-
-        if len(res_orders) == 0:
-            return Response({'orders': res_orders}, status=status.HTTP_200_OK)
-        else:
-            Courier.objects.filter(courier_id=courier.courier_id).update(assign_time=assign_time)
-            for order in res_orders:
-                Order.objects.filter(order_id=order['id']).update(taken_by=courier.courier_id)
-            return Response({'orders': res_orders, 'assign_time': assign_time}, status=status.HTTP_200_OK)
+            Courier.objects.filter(courier_id=courier.courier_id).update(
+                earning_coef=Courier.TYPE_TO_COEF[courier.courier_type], assign_time=assign_time)
+            for order in valid_orders:
+                Order.objects.filter(order_id=order.order_id).update(taken_by=courier.courier_id)
+            return Response({'orders': [{'id': order.order_id} for order in valid_orders], 'assign_time': assign_time},
+                            status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

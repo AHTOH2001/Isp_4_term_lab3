@@ -7,18 +7,9 @@ class CourierSerializer(serializers.ModelSerializer):
     regions = serializers.ListField(child=serializers.IntegerField(min_value=0))
     working_hours = serializers.ListField(child=serializers.CharField(min_length=11, max_length=11))
 
-    # time_regions = serializers.DictField(child=serializers.IntegerField(min_value=0, allow_null=True), required=False,
-    #                                      default=dict)
-
     class Meta:
         model = Courier
-        # fields = '__all__'
-        exclude = ['complete_time', 'assign_time', 'time_regions', 'finished_amount_regions', 'earning_coef',
-                   'total_earning']
-
-    # def create(self, validated_data):
-    #     raise Exception(validated_data)
-    #     pass
+        exclude = ['complete_time', 'assign_time', 'time_regions', 'finished_amount_regions', 'earning_coef', 'earning']
 
 
 class CourierUpdateSerializer(CourierSerializer):
@@ -35,7 +26,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        # fields = '__all__'
         exclude = ['taken_by', 'is_done']
 
 
@@ -62,10 +52,6 @@ class OrdersCreateSerializer(serializers.Serializer):
         return DataObject(**validated_data)
 
 
-# {'data': [OrderedDict([('name', 'name1'), ('courier_type', 'courier_type1')]),
-#           OrderedDict([('name', 'name2'), ('courier_type', 'courier_type2')])]}
-
-
 class CouriersListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courier
@@ -77,10 +63,6 @@ class OrdersListSerializer(serializers.ModelSerializer):
         model = Order
         fields = '__all__'
 
-
-# class DataObject:
-#     def __init__(self, data):
-#         self.data = data
 
 class OrdersAssignSerializer(serializers.Serializer):
     courier_id = serializers.IntegerField(min_value=0)

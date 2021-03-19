@@ -1,9 +1,6 @@
 from django.db import models
 
 
-# class CourierUtils(models.Model):
-
-
 class Courier(models.Model):
     courier_id = models.PositiveIntegerField(verbose_name='идентификатор курьера', primary_key=True, unique=True)
     TYPE_TO_VALUE = {'foot': 10, 'bike': 15, 'car': 50}
@@ -16,14 +13,13 @@ class Courier(models.Model):
     courier_type = models.CharField(verbose_name='тип курьера', max_length=255, choices=COURIER_TYPE_CHOICES)
     regions = models.JSONField(verbose_name='районы работы')
     working_hours = models.JSONField(verbose_name='рабочие часы')
-    # utils = models.ForeignKey(CourierUtils, on_delete=models.CASCADE)
-    # utils = models.IntegerField()
     assign_time = models.DateTimeField(verbose_name='Дата назначения заказов', null=True)
     complete_time = models.DateTimeField(verbose_name='Дата завершения заказа', null=True)
     time_regions = models.JSONField(verbose_name='Минимальное время доставки по району', null=True)
     finished_amount_regions = models.JSONField(verbose_name='Количество завершенных заказов по району', null=True)
     earning_coef = models.IntegerField(null=True)
-    total_earning = models.IntegerField(default=0)
+    earning = models.IntegerField(default=0)
+
 
 class Order(models.Model):
     order_id = models.PositiveIntegerField(verbose_name='идентификатор заказа', primary_key=True, unique=True)
