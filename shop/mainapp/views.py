@@ -36,6 +36,9 @@ class OrdersListView(generics.ListAPIView):
     serializer_class = OrdersListSerializer
     queryset = Order.objects.filter(is_done=False).order_by('weight')
 
+    def get(self, request, *args, **kwargs):
+        return super().get(self, request, *args, **kwargs)
+
 
 class OrdersRawListView(generics.ListAPIView):
     serializer_class = OrdersListSerializer
@@ -160,7 +163,7 @@ def order_complete(request):
         courier.finished_amount_regions[region] += 1
 
         courier.complete_time = complete_time
-        courier.total_earning += 500 * courier.earning_coef
+        courier.earning += 500 * courier.earning_coef
 
         courier.save()
         Order.objects.filter(order_id=order.order_id).update(is_done=True)
