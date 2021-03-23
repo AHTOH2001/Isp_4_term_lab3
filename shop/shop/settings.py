@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
-from django.db.backends.mysql.base import DatabaseWrapper
-
-DatabaseWrapper.data_types['DateTimeField'] = 'datetime'
+# from django.db.backends.mysql.base import DatabaseWrapper
+#
+# DatabaseWrapper.data_types['DateTimeField'] = 'datetime'
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
