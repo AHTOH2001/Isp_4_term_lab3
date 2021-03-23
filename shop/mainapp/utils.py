@@ -45,8 +45,7 @@ def valid_orders_for_courier(courier, orders):
                         str_time in courier.working_hours]
                     for order_time_l, order_time_r in order_time_ranges:
                         for courier_time_l, courier_time_r in courier_time_ranges:
-                            # if order_time_l <= courier_time_l <= order_time_r or order_time_l <= courier_time_r <= order_time_r:
-                            if courier_time_l <= order_time_l <= courier_time_r or courier_time_l <= order_time_r <= courier_time_r:
+                            if courier_time_l <= order_time_l <= courier_time_r or courier_time_l <= order_time_r <= courier_time_r or order_time_l <= courier_time_l <= order_time_r or order_time_l <= courier_time_r <= order_time_r:
                                 result = True
 
                     if result is True:
