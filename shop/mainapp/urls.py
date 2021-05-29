@@ -12,6 +12,9 @@ urlpatterns = [
     path('couriers/<int:pk>', CourierRetrieveUpdateView.as_view()),
     path('orders/assign', orders_assign),
     path('orders/complete', order_complete),
+    path('', home),
+    path('register', register),
+    path('login', login)
 ]
 
 # handler400 = bad_request

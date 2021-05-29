@@ -296,4 +296,31 @@ class AuthorListViewTest(TestCase):
 
         response = self.client.get('/couriers/2')
         self.assertTrue(response.content.endswith(b',"earning":5000}'))
+
         # raise Exception((response.content, response.status_code))
+
+    def test_dublicate_couriers(self):
+        response = self.client.post('/couriers', {
+            "data": [
+                {
+                    "courier_id": 11,
+                    "courier_type": "foot",
+                    "regions": [1, 12, 22],
+                    "working_hours": ["11:35-14:05", "09:00-11:00"]
+                },
+                {
+                    "courier_id": 11,
+                    "courier_type": "bike",
+                    "regions": [22],
+                    "working_hours": ["09:00-18:00"]
+                },
+                {
+                    "courier_id": 3,
+                    "courier_type": "car",
+                    "regions": [12, 22, 23, 33],
+                    "working_hours": []
+                }
+            ]
+        }, content_type='application/json')
+
+        self.assertEqual(response.status_code, 400)

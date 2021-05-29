@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = '^dl=-wrri^#817448-vu@33^9p=a@w!fc1n(37%zk9o2miag&g'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['0.0.0.0', '127.0.0.1']
 
@@ -114,9 +114,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-REST_FRAMEWORK = {
-    'EXCEPTION_HANDLER': 'mainapp.utils.custom_exception_handler'
-}
+# REST_FRAMEWORK = {
+#     'EXCEPTION_HANDLER': 'mainapp.utils.custom_exception_handler'
+# }
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/

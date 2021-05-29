@@ -17,8 +17,8 @@ class Courier(models.Model):
     complete_time = models.DateTimeField(verbose_name='Дата завершения заказа', null=True)
     time_regions = models.JSONField(verbose_name='Минимальное время доставки по району', null=True)
     finished_amount_regions = models.JSONField(verbose_name='Количество завершенных заказов по району', null=True)
-    earning_coef = models.IntegerField(null=True)
-    earning = models.IntegerField(default=0)
+    earning_coef = models.IntegerField(null=True, editable=True)
+    earning = models.IntegerField(default=0, editable=True)
 
 
 class Order(models.Model):

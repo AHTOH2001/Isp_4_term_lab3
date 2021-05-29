@@ -1,12 +1,21 @@
+from django.contrib.auth import login, logout
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.shortcuts import redirect, render
+from django.utils.datastructures import MultiValueDictKeyError
 from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.contrib import messages
 from .serializers import CouriersListSerializer, CouriersCreateSerializer, OrdersListSerializer, OrdersCreateSerializer, \
     CourierUpdateSerializer, OrdersAssignSerializer, OrderCompleteSerializer
 from .models import Courier, Order
 from datetime import datetime
 from django.utils import timezone
-from .utils import valid_orders_for_courier
+from django import urls
+
+from .settings import time_for_registration
+from .utils import valid_orders_for_courier, get_code
 
 
 class CouriersCreateView(generics.CreateAPIView):
@@ -169,3 +178,93 @@ def order_complete(request):
         Order.objects.filter(order_id=order.order_id).update(is_done=True)
 
         return Response({"order_id": order.order_id}, status=status.HTTP_200_OK)
+
+
+def register(request):
+    if request.method == 'POST':
+        form = ClientRegisterForm(data=request.POST)
+        if form.is_valid():
+            client, raw_pass = form.save()
+
+            confirmation_url = request.META["HTTP_HOST"] + urls.reverse(
+                register_complete) + f'?login={client.user.email}&code={get_code(client.user.email, "abs", 20)}'
+            email_message = f'''Здравствуйте, уважаемый {client.user.last_name} {client.user.first_name}!
+
+Вы в одном шаге от завершения регистрации в интернет библиотеке CheekLit.
+
+Ваши данные для авторизации в системе:
+
+Логин: {client.user.email}
+Пароль: {raw_pass}
+
+Внимание! Вы должны подтвердить регистрационные данные!
+Для подтверждения достаточно перейти по следующей ссылке:
+
+{confirmation_url}
+
+Если Вы действительно желаете подтвердить регистрацию, пожалуйста, сделайте это до {(timezone.localtime() + time_for_registration).strftime('%H:%M %d.%m.%Y')}. В противном случае Ваши регистрационные данные будут удалены из системы.
+
+С уважением, администрация интернет библиотеки CheekLit'''
+
+            send_mail(
+                f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
+                email_message,
+                'CheekLitBot@gmail.com',
+                [client.user.email],
+                fail_silently=False,
+            )
+            messages.success(request, 'Пользователь успешно создан, проверьте почту и подтвердите регистрацию')
+            return redirect('home')
+        else:
+            messages.error(request, 'Некоторые данные введены неверно')
+    else:
+        form = ClientRegisterForm()
+    return render(request, 'register.html',
+                  {'form': form, 'genres': Genre.objects.all(), 'authors': Author.objects.all()})
+
+
+def register_complete(request):
+    try:
+        email = request.GET['login']
+        code = request.GET['code'].replace(' ', '+')
+        if get_code(email, 'abs', 20) == code:
+            # Delete outdated clients
+            User.objects.filter(date_joined__lt=timezone.localtime() - time_for_registration,
+                                is_active=False, is_staff=False, is_superuser=False).delete()
+            try:
+                if User.objects.get(email=email).is_active is True:
+                    messages.warning(request, 'Пользователь уже подтверждён')
+                else:
+                    messages.success(request, 'Пользователь успешно подтверждён, осталось только авторизоваться')
+                    User.objects.filter(email=email).update(is_active=True)
+                    return redirect('authorize')
+            except User.DoesNotExist:
+                messages.error(request, 'По всей видимости ссылка регистрации просрочена')
+        else:
+            messages.error(request, f'Параметр code неверный')
+
+    except MultiValueDictKeyError as e:
+        messages.error(request, f'Пропущен параметр {e.args}')
+
+    return redirect('home')
+
+
+def authorize(request):
+    if request.method == 'POST':
+        form = ClientAuthorizationForm(data=request.POST)
+        if form.is_valid():
+            client = form.get_user()
+            login(request, client)
+            messages.success(request, f'Добро пожаловать, {client.last_name} {client.first_name}')
+            return redirect('home')
+        else:
+            messages.error(request, 'Некоторые данные введены неверно')
+    else:
+        form = ClientAuthorizationForm()
+    return render(request, 'authorize.html',
+                  {'form': form, 'genres': Genre.objects.all(), 'authors': Author.objects.all()})
+
+
+def client_logout(request):
+    logout(request)
+    return redirect('home')
