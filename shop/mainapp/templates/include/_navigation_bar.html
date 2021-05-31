@@ -1,0 +1,49 @@
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container">
+        <a class="navbar-brand">Звоните: 8-800-555-35-35</a>
+        {#        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive"#}
+        {#                aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">#}
+        {#            <span class="navbar-toggler-icon"></span>#}
+        {#        </button>#}
+        <div class="collapse navbar-collapse" id="navbarResponsive">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item active">
+                    <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'home' %}">
+                        Главная
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/about-us/' %}active{% endif %}"
+                       href={% url 'about_us' %}>
+                        О нас
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/useful-information/' %}active{% endif %}"
+                       href={% url 'useful_information' %}>
+                        Полезная информация
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.path == '/contact/' %}active{% endif %}"
+                       href={% url 'contact' %}>
+                        Контакты
+                    </a>
+                </li>
+            </ul>
+
+        </div>
+        {#        <span class="navbar-text">#}
+        {% if request.user.is_authenticated %}
+            <a class="nav-link"
+               href="{% url 'profile' %}">{{ request.user.first_name }} {{ request.user.last_name }}</a>
+            <a class="nav-link" href="{% url 'logout' %}">Выход</a>
+        {% else %}
+            <a href="{% url 'register' %}">Регистрация</a> \t
+            <a href="{% url 'authorize' %}">Авторизация</a>
+        {% endif %}
+        {#           </span>#}
+    </div>
+
+</nav>

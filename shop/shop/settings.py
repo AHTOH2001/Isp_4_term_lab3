@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+
 # from django.db.backends.mysql.base import DatabaseWrapper
 #
 # DatabaseWrapper.data_types['DateTimeField'] = 'datetime'
@@ -135,3 +136,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'CheekLitBot@gmail.com'
+EMAIL_HOST_PASSWORD = '2T3PxdkZZwNCnRP'
+EMAIL_PORT = 587

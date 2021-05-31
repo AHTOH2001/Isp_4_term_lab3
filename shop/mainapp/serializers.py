@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User, Group
 from rest_framework import serializers
-from .models import Courier, Order
+from .models import CourierProfile, Order
 
 
 class CourierSerializer(serializers.ModelSerializer):
@@ -8,7 +8,7 @@ class CourierSerializer(serializers.ModelSerializer):
     working_hours = serializers.ListField(child=serializers.CharField(min_length=11, max_length=11))
 
     class Meta:
-        model = Courier
+        model = CourierProfile
         exclude = ['complete_time', 'assign_time', 'time_regions', 'finished_amount_regions', 'earning_coef', 'earning']
 
 
@@ -39,7 +39,7 @@ class CouriersCreateSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         for item in validated_data['data']:
-            Courier.objects.create(**item)
+            CourierProfile.objects.create(**item)
         return DataObject(**validated_data)
 
 
@@ -54,7 +54,7 @@ class OrdersCreateSerializer(serializers.Serializer):
 
 class CouriersListSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Courier
+        model = CourierProfile
         fields = '__all__'
 
 

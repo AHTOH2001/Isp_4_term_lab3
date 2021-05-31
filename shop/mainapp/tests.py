@@ -2,7 +2,7 @@ from datetime import datetime
 
 from django.test import TestCase
 from rest_framework import status
-from .models import Courier, Order
+from .models import CourierProfile, Order
 from django.test import Client
 from django.utils import timezone
 
@@ -12,19 +12,19 @@ from django.utils import timezone
 class AuthorListViewTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        Courier.objects.create(
+        CourierProfile.objects.create(
             courier_id=1,
             courier_type="foot",
             regions=[1, 12, 22],
             working_hours=["11:35-14:05", "09:00-11:00"]
         )
-        Courier.objects.create(
+        CourierProfile.objects.create(
             courier_id=2,
             courier_type="bike",
             regions=[1, 22],
             working_hours=["09:00-18:00"]
         )
-        Courier.objects.create(
+        CourierProfile.objects.create(
             courier_id=3,
             courier_type="car",
             regions=[12, 22, 23, 33],

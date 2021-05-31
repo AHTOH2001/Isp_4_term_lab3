@@ -1,4 +1,4 @@
-# Project for Yandex backend school
+# Third lab work ISP
 
 ### Installing, deployment and running manual:
 1. Install requirements using command `python3 -m pip install -r requirements.txt`
