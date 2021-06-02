@@ -51,7 +51,8 @@ class Order(models.Model):
     weight = models.DecimalField(verbose_name='вес заказа', decimal_places=2, max_digits=4)
     region = models.PositiveIntegerField(verbose_name='район доставки')
     delivery_hours = models.JSONField(verbose_name='часы доставки')
-    taken_by = models.ForeignKey(CourierProfile, verbose_name='взят курьером', on_delete=models.CASCADE, null=True)
+    taken_by = models.ForeignKey(CourierProfile, verbose_name='взят курьером', on_delete=models.CASCADE, null=True,
+                                 blank=True)
     is_done = models.BooleanField(verbose_name='Завершён ли заказ', default=False)
 
     def __str__(self):
@@ -62,7 +63,7 @@ class Order(models.Model):
                 is_done_verbose = 'Завершённый'
             else:
                 is_done_verbose = 'Не завершённый'
-            return f'{self.order_id}| {is_done_verbose} заказ курьера {self.taken_by}'
+            return f'{self.order_id}| {is_done_verbose} заказ курьера {self.taken_by.courier_id}'
 
     class Meta:
         verbose_name = 'Заказ'

@@ -12,6 +12,7 @@ from django import urls
 from django.utils import timezone
 import requests
 from ..models import CourierProfile, Courier
+import logging
 
 
 def home(request):
@@ -117,7 +118,16 @@ def profile(request):
         courier = request.user.courier_set.get()
         if courier.profile is None:
             return redirect('profile_create')
-    return render(request, 'profile.html')
+    response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}')
+    if not response.ok:
+        messages.error(request, response.text)
+        return redirect('register')
+    else:
+        context = response.json()
+        context['courier'] = courier
+        verbose_choives = dict(CourierProfile.COURIER_TYPE_CHOICES)
+        context['courier_type'] = verbose_choives[context['courier_type']]
+        return render(request, 'profile.html', context)
 
 
 def profile_create(request):
@@ -136,8 +146,9 @@ def profile_create(request):
                     }
                 ]
             })
-            
-            if response.status_code != 201:
+
+            if not response.ok:
+                logging.error(response.text)
                 messages.error(request, response.text)
             else:
                 actual_courier_profile = CourierProfile.objects.get(courier_id=courier_profile.courier_id)
@@ -145,6 +156,7 @@ def profile_create(request):
                 messages.success(request, f'Профиль успешно создан')
             return redirect('profile')
         else:
+            logging.error('Некоторые данные введены неверно')
             messages.error(request, 'Некоторые данные введены неверно')
     else:
         form = ProfileCreationForm()
@@ -161,3 +173,32 @@ def about_us(request):
 
 def contact(request):
     return render(request, 'contact.html')
+
+
+def edit(request):
+    current_profile = request.user.courier_set.get().profile
+    if request.method == 'POST':
+        form = ProfileCreationForm(data=request.POST)
+        if form.is_valid():
+            courier_profile = form.save(commit=False)
+            response = requests.patch(f'http://{request.META["HTTP_HOST"]}/couriers/{current_profile.courier_id}',
+                                      json={
+                                          "courier_type": courier_profile.courier_type,
+                                          "regions": courier_profile.regions,
+                                          "working_hours": courier_profile.working_hours
+                                      })
+
+            if not response.ok:
+                messages.error(request, response.text)
+            else:
+                # actual_courier_profile = CourierProfile.objects.get(courier_id=courier_profile.courier_id)
+                # Courier.objects.filter(id=request.user.courier_set.get().id).update(profile=actual_courier_profile)
+                messages.success(request, f'Профиль успешно отредактирован')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Некоторые данные введены неверно')
+    else:
+        form = ProfileCreationForm(
+            data={'courier_type': str(current_profile.courier_type), 'regions': str(current_profile.regions),
+                  'working_hours': str(current_profile.working_hours).replace("'", '"')})
+    return render(request, 'profile_edit.html', {'form': form})

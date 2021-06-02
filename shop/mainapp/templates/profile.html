@@ -6,18 +6,39 @@
 
 {% block content %}
     {#    {% include 'include/_messages.html' %}#}
-    <div class="row">
-        {#        <div class="col-lg-3">#}
-        {#            {% include 'include/_categories.html' %}#}
-        {#        </div>#}
-        <div class="col-lg-9">
-            <p>ПРофиль емаё</p>
-
-
+    <div class="container mt-3  justify-content-center">
+        <div class="card p-3">
+            <div class="d-flex align-items-center">
+                <div class="image"><img
+                        src="https://img.icons8.com/ultraviolet/452/courier.png"
+                        class="rounded" width="155"></div>
+                <div class="ml-3 w-100">
+                    <h4 class="mb-0 mt-0">{{ courier.user.first_name }} {{ courier.user.second_name }}</h4>
+                    <span>{{ courier_type }}</span>
+                    <div class="p-2 mt-2 bg-dark d-flex justify-content-between rounded text-white stats">
+                        <div class="d-flex flex-column"><span class="articles">Regions</span> <span>{{ regions }}</span>
+                        </div>
+                        <div class="d-flex flex-column"><span class="followers">Working_hours</span>
+                            {% for hours in working_hours %}
+                                <span>{{ hours }}<br></span>
+                            {% endfor %}
+                        </div>
+                        <div class="d-flex flex-column"><span class="rating">Rating</span> <span>{{ rating }}</span>
+                        </div>
+                        <div class="d-flex flex-column"><span class="rating">Earnings</span> <span>{{ earnings }}</span>
+                        </div>
+                    </div>
+                    {#                    <div class="button mt-2 d-flex flex-row align-items-center">#}
+                    {#                        <button class="btn btn-sm btn-outline-primary w-100">Chat</button>#}
+                    {#                        <button class="btn btn-sm btn-primary w-100 ml-2">Follow</button>#}
+                    {#                    </div>#}
+                </div>
+            </div>
         </div>
-        <!-- /.col-lg-9 -->
-
     </div>
 
+    <div class="d-grid gap-2 col-6 mx-auto">
+        <a class="btn btn-primary" href="{% url 'edit' %}">Edit</a>
+    </div>
 
 {% endblock %}

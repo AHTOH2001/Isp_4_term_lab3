@@ -78,7 +78,7 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if courier.time_regions is not None:
             res['rating'] = round((60 * 60 - min(min(courier.time_regions.values()), 60 * 60)) / (60 * 60) * 5, 2)
 
-        res['earning'] = courier.earning
+        res['earnings'] = courier.earning
 
         return Response(res, status=status.HTTP_200_OK)
 

@@ -5,19 +5,20 @@
 
 {% block content %}
     <div class="row">
-{#        <div class="col-lg-3">#}
-{#            {% include 'include/_categories.html' %}#}
-{#        </div>#}
+        {#        <div class="col-lg-3">#}
+        {#            {% include 'include/_categories.html' %}#}
+        {#        </div>#}
         <div class="col-lg-9">
-{#            {% include 'include/_messages.html' %}#}
+            {#            {% include 'include/_messages.html' %}#}
 
-{#            <div class="row">#}
-                <form method="post">
-                    {% csrf_token %}
-                    {% block form %}{% endblock %}
-                    {% block button %}{% endblock %}
-                </form>
+            {#            <div class="row">#}
+            <form method="post">
+                {% csrf_token %}
+                {% block form %}{% endblock %}
+                {% block button %}{% endblock %}
+            </form>
 
         </div>
     </div>
+
 {% endblock %}
