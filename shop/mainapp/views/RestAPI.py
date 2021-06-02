@@ -89,14 +89,13 @@ def orders_assign(request):
         serializer = OrdersAssignSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         try:
             courier = CourierProfile.objects.get(courier_id=request.data['courier_id'])
         except CourierProfile.DoesNotExist:
             return Response({'courier_id': [f'Courier with id {request.data["courier_id"]} does not exist']},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        Order.objects.filter(taken_by=courier.courier_id).update(taken_by=None)
+        # Order.objects.filter(taken_by=courier.courier_id).update(taken_by=None)
         valid_orders = valid_orders_for_courier(courier, Order.objects.filter(is_done=False, taken_by=None))
 
         if len(valid_orders) == 0:

@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
@@ -11,7 +13,7 @@ from ..utils import get_code
 from django import urls
 from django.utils import timezone
 import requests
-from ..models import CourierProfile, Courier
+from ..models import CourierProfile, Courier, Order
 import logging
 
 
@@ -33,7 +35,7 @@ def register(request):
                 register_complete) + f'?login={courier.user.email}&code={get_code(courier.user.email, "abs", 20)}'
             email_message = f'''Здравствуйте, уважаемый {courier.user.last_name} {courier.user.first_name}!
 
-Вы в одном шаге от завершения регистрации в интернет библиотеке CheekLit.
+Вы в одном шаге от завершения регистрации в интернет курьерне.
 
 Ваши данные для авторизации в системе:
 
@@ -47,7 +49,7 @@ def register(request):
 
 Если Вы действительно желаете подтвердить регистрацию, пожалуйста, сделайте это до {(timezone.localtime() + time_for_registration).strftime('%H:%M %d.%m.%Y')}. В противном случае Ваши регистрационные данные будут удалены из системы.
 
-С уважением, администрация интернет библиотеки CheekLit'''
+С уважением, администрация курьерни'''
 
             send_mail(
                 f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
@@ -118,6 +120,35 @@ def profile(request):
         courier = request.user.courier_set.get()
         if courier.profile is None:
             return redirect('profile_create')
+
+        if request.method == 'POST':
+            if 'get_new_orders' in request.GET:
+                response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/assign', json={
+                    "courier_id": courier.profile.courier_id
+                })
+                if not response.ok:
+                    messages.error(request, response.text)
+                    return redirect('profile')
+                else:
+                    # result = [res['id'] for res in response.json()['orders']]
+                    result = response.json()['orders']
+                    if len(result) == 0:
+                        messages.warning(request, 'Для Вас подходящих заказов пока нет')
+                    else:
+                        messages.success(request, f'Новые заказы: {" ".join(map(str, result))}')
+
+            if 'complete_order' in request.GET:
+                response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/complete', json={
+                    "courier_id": courier.profile.courier_id,
+                    "order_id": request.GET['complete_order'],
+                    "complete_time": str(timezone.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                })
+                if not response.ok:
+                    messages.error(request, response.text)
+                    return redirect('profile')
+                else:
+                    messages.success(request, response.text)
+
     response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}')
     if not response.ok:
         messages.error(request, response.text)
@@ -125,8 +156,11 @@ def profile(request):
     else:
         context = response.json()
         context['courier'] = courier
-        verbose_choives = dict(CourierProfile.COURIER_TYPE_CHOICES)
-        context['courier_type'] = verbose_choives[context['courier_type']]
+        verbose_choices = dict(CourierProfile.COURIER_TYPE_CHOICES)
+        context['courier_type'] = verbose_choices[context['courier_type']]
+        context['uncompleted_orders'] = courier.profile.order_set.filter(is_done=False)
+        context['completed_orders'] = courier.profile.order_set.filter(is_done=True)
+
         return render(request, 'profile.html', context)
 
 
