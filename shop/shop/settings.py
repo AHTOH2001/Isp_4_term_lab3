@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 import os
 from pathlib import Path
+from datetime import timedelta
 
 # from django.db.backends.mysql.base import DatabaseWrapper
 #
@@ -124,7 +125,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = r'Europe/Minsk'
 
 USE_I18N = True
 
@@ -143,3 +144,8 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'CheekLitBot@gmail.com'
 EMAIL_HOST_PASSWORD = '2T3PxdkZZwNCnRP'
 EMAIL_PORT = 587
+
+# for mainapp
+time_for_registration = timedelta(days=1)
+logging_level = 'WARNING'
+log_file = 'logs'

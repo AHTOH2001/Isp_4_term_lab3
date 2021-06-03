@@ -16,11 +16,12 @@ class CourierProfile(models.Model):
     courier_type = models.CharField(verbose_name='тип курьера', max_length=255, choices=COURIER_TYPE_CHOICES)
     regions = models.JSONField(verbose_name='районы работы')
     working_hours = models.JSONField(verbose_name='рабочие часы')
-    assign_time = models.DateTimeField(verbose_name='Дата назначения заказов', null=True)
-    complete_time = models.DateTimeField(verbose_name='Дата завершения заказа', null=True)
-    time_regions = models.JSONField(verbose_name='Минимальное время доставки по району', null=True)
-    finished_amount_regions = models.JSONField(verbose_name='Количество завершенных заказов по району', null=True)
-    earning_coef = models.IntegerField(null=True, editable=True)
+    assign_time = models.DateTimeField(verbose_name='Дата назначения заказов', null=True, blank=True)
+    complete_time = models.DateTimeField(verbose_name='Дата завершения заказа', null=True, blank=True)
+    time_regions = models.JSONField(verbose_name='Минимальное время доставки по району', null=True, blank=True)
+    finished_amount_regions = models.JSONField(verbose_name='Количество завершенных заказов по району', null=True,
+                                               blank=True)
+    earning_coef = models.IntegerField(null=True, editable=True, blank=True)
     earning = models.IntegerField(default=0, editable=True)
 
     def __str__(self):

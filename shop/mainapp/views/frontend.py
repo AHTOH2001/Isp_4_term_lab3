@@ -8,18 +8,22 @@ from django.utils.datastructures import MultiValueDictKeyError
 from django.contrib import messages
 
 from ..forms import CourierRegisterForm, CourierAuthorizationForm, ProfileCreationForm
-from ..settings import time_for_registration
 from ..utils import get_code
 from django import urls
 from django.utils import timezone
 import requests
 from ..models import CourierProfile, Courier, Order
 import logging
+from shop.settings import time_for_registration, logging_level, log_file
+import threading
+
+logging.basicConfig(filename=log_file, level=getattr(logging, logging_level))
 
 
 def home(request):
     if not request.user.is_authenticated:
         messages.warning(request, 'Перед использованием нашего чудесного сайта Вам стоит авторизоваться')
+        logging.info('Перед использованием нашего чудесного сайта Вам стоит авторизоваться')
         return redirect('authorize')
     else:
         return redirect('profile')
@@ -51,16 +55,24 @@ def register(request):
 
 С уважением, администрация курьерни'''
 
-            send_mail(
+            thread = threading.Thread(target=send_mail, args=(
                 f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
                 email_message,
                 'CheekLitBot@gmail.com',
-                [courier.user.email],
-                fail_silently=False,
-            )
+                [courier.user.email]), kwargs={'fail_silently': False})
+            thread.start()
+            # send_mail(
+            #     f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
+            #     email_message,
+            #     'CheekLitBot@gmail.com',
+            #     [courier.user.email],
+            #     fail_silently=False,
+            # )
             messages.success(request, 'Пользователь успешно создан, проверьте почту и подтвердите регистрацию')
-            return redirect('home')
+            logging.info('Пользователь успешно создан, проверьте почту и подтвердите регистрацию')
+            return redirect('authorize')
         else:
+            logging.info('Некоторые данные введены неверно')
             messages.error(request, 'Некоторые данные введены неверно')
     else:
         form = CourierRegisterForm()
@@ -78,19 +90,24 @@ def register_complete(request):
             try:
                 if User.objects.get(email=email).is_active is True:
                     messages.warning(request, 'Курьер уже подтверждён')
+                    logging.info('Курьер уже подтверждён')
                 else:
                     messages.success(request, 'Курьер успешно подтверждён, осталось только авторизоваться')
+                    logging.info('Курьер успешно подтверждён, осталось только авторизоваться')
                     User.objects.filter(email=email).update(is_active=True)
                     return redirect('authorize')
             except User.DoesNotExist:
                 messages.error(request, 'По всей видимости ссылка регистрации просрочена')
+                logging.error('По всей видимости ссылка регистрации просрочена')
         else:
             messages.error(request, f'Параметр code неверный')
+            logging.error(f'Параметр code неверный')
 
     except MultiValueDictKeyError as e:
         messages.error(request, f'Пропущен параметр {e.args}')
+        logging.error(f'Пропущен параметр {e.args}')
 
-    return redirect('home')
+    return redirect('authorize')
 
 
 def authorize(request):
@@ -100,9 +117,11 @@ def authorize(request):
             courier = form.get_user()
             login(request, courier)
             messages.success(request, f'Добро пожаловать, {courier.last_name} {courier.first_name}')
+            logging.info(f'Добро пожаловать, {courier.last_name} {courier.first_name}')
             return redirect('home')
         else:
             messages.error(request, 'Некоторые данные введены неверно')
+            logging.info('Некоторые данные введены неверно')
     else:
         form = CourierAuthorizationForm()
     return render(request, 'authorize.html', {'form': form})
@@ -110,7 +129,9 @@ def authorize(request):
 
 def client_logout(request):
     logout(request)
-    return redirect('home')
+    messages.warning(request, 'До встречи!')
+    logging.info('До встречи!')
+    return redirect('authorize')
 
 
 def profile(request):
@@ -128,34 +149,40 @@ def profile(request):
                 })
                 if not response.ok:
                     messages.error(request, response.text)
+                    logging.error(response.text)
                     return redirect('profile')
                 else:
                     # result = [res['id'] for res in response.json()['orders']]
                     result = response.json()['orders']
                     if len(result) == 0:
                         messages.warning(request, 'Для Вас подходящих заказов пока нет')
+                        logging.info('Для Вас подходящих заказов пока нет')
                     else:
                         messages.success(request, f'Новые заказы: {" ".join(map(str, result))}')
+                        logging.info(f'Новые заказы: {" ".join(map(str, result))}')
 
             if 'complete_order' in request.GET:
                 response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/complete', json={
                     "courier_id": courier.profile.courier_id,
                     "order_id": request.GET['complete_order'],
-                    "complete_time": str(timezone.now().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                    "complete_time": str(timezone.localtime().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
                 })
                 if not response.ok:
                     messages.error(request, response.text)
+                    logging.info(response.text)
                     return redirect('profile')
                 else:
                     messages.success(request, response.text)
+                    logging.info(response.text)
 
     response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}')
     if not response.ok:
         messages.error(request, response.text)
+        logging.info(response.text)
         return redirect('register')
     else:
         context = response.json()
-        context['courier'] = courier
+        context['courier'] = request.user.courier_set.get()
         verbose_choices = dict(CourierProfile.COURIER_TYPE_CHOICES)
         context['courier_type'] = verbose_choices[context['courier_type']]
         context['uncompleted_orders'] = courier.profile.order_set.filter(is_done=False)
@@ -182,15 +209,16 @@ def profile_create(request):
             })
 
             if not response.ok:
-                logging.error(response.text)
+                logging.info(response.text)
                 messages.error(request, response.text)
             else:
                 actual_courier_profile = CourierProfile.objects.get(courier_id=courier_profile.courier_id)
                 Courier.objects.filter(id=request.user.courier_set.get().id).update(profile=actual_courier_profile)
                 messages.success(request, f'Профиль успешно создан')
+                logging.info(f'Профиль успешно создан')
             return redirect('profile')
         else:
-            logging.error('Некоторые данные введены неверно')
+            logging.info('Некоторые данные введены неверно')
             messages.error(request, 'Некоторые данные введены неверно')
     else:
         form = ProfileCreationForm()
@@ -224,13 +252,16 @@ def edit(request):
 
             if not response.ok:
                 messages.error(request, response.text)
+                logging.info(response.text)
             else:
                 # actual_courier_profile = CourierProfile.objects.get(courier_id=courier_profile.courier_id)
                 # Courier.objects.filter(id=request.user.courier_set.get().id).update(profile=actual_courier_profile)
                 messages.success(request, f'Профиль успешно отредактирован')
+                logging.info(f'Профиль успешно отредактирован')
             return redirect('profile')
         else:
             messages.error(request, 'Некоторые данные введены неверно')
+            logging.info('Некоторые данные введены неверно')
     else:
         form = ProfileCreationForm(
             data={'courier_type': str(current_profile.courier_type), 'regions': str(current_profile.regions),

@@ -58,3 +58,4 @@ def valid_orders_for_courier(courier, orders):
 
 def get_code(obj, seed, length=40):
     return make_password(obj, seed)[-length:]
+
