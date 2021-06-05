@@ -1,0 +1,13 @@
+{% extends 'base_form.html' %}
+{% block title %}
+    Создание заказа - {{ block.super }}
+{% endblock %}
+
+{% block form %}
+    <h4>Создание заказа:</h4>
+    {{ form.as_div }}
+{% endblock %}
+
+{% block button %}
+    <button type="submit" class="btn btn-primary btn-block">Создать заказ</button>
+{% endblock %}

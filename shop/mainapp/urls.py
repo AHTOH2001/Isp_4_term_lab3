@@ -28,6 +28,5 @@ urlpatterns += [
     path('contact/', views.frontend.contact, name='contact'),
     path('logout/', views.frontend.client_logout, name='logout'),
     path('profile/edit/', views.frontend.edit, name='edit'),
+    path('order/create', views.frontend.create_order, name='create_order'),
 ]
-
-# handler400 = bad_request

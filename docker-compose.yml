@@ -1,27 +1,24 @@
-version: '3'
+version: "3.3"
+
 services:
-
-  mysqldb:
-    image: mysql:latest
-    #    ports:
-    #      - "3306:3306"
-    volumes:
-      - "./db_data:/var/lib/mysql"
-    #      - "mysql_config:/etc/mysql"
+  db:
+    image: postgres
+    #    volumes:
+    #      - ./data/db:/var/lib/postgresql/data
     environment:
-      MYSQL_ROOT_PASSWORD: Dk0p4XGxP4root
-      MYSQL_DATABASE: RestAPIdb
-      MYSQL_USER: RestAPIuser
-      MYSQL_PASSWORD: Dk0p4XGxP4
-    restart: always
-
-  shop:
+      - POSTGRES_DB=RestAPIdb
+      - POSTGRES_USER=RestAPIuser
+      - POSTGRES_PASSWORD=Dk0p4XGxP4
+  web:
     build: .
+    command: bash -c "
+      sleep 5 &&
+      python shop/manage.py migrate &&
+      python shop/manage.py runserver 0.0.0.0:8080"
+    #    volumes:
+    #      - .:/code
     ports:
       - "8080:8080"
-    restart: always
-    command: /bin/bash -c "pip install -r requirements.txt && python3 shop/manage.py migrate && python3 shop/manage.py runserver 0.0.0.0:8080"
-    #    command: python3 shop/manage.py runserver 0.0.0.0:8080
-
     depends_on:
-      - mysqldb
+      - db
+    restart: always

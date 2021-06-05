@@ -7,10 +7,11 @@ from django.shortcuts import redirect, render
 from django.utils.datastructures import MultiValueDictKeyError
 from django.contrib import messages
 
-from ..forms import CourierRegisterForm, CourierAuthorizationForm, ProfileCreationForm
+from ..forms import CourierRegisterForm, CourierAuthorizationForm, ProfileCreationForm, CreateOrderForm
 from ..utils import get_code
 from django import urls
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 import requests
 from ..models import CourierProfile, Courier, Order
 import logging
@@ -33,6 +34,14 @@ def register(request):
     if request.method == 'POST':
         form = CourierRegisterForm(data=request.POST)
         if form.is_valid():
+            try:
+                User.objects.get(email=request.POST['email'])
+            except User.DoesNotExist:
+                pass
+            else:
+                logging.info('Некоторые данные введены неверно')
+                messages.error(request, 'Такой Email уже зарегистрирован')
+                return render(request, 'register.html', {'form': form})
             courier, raw_pass = form.save()
 
             confirmation_url = request.META["HTTP_HOST"] + urls.reverse(
@@ -135,17 +144,22 @@ def client_logout(request):
 
 
 def profile(request):
-    if not hasattr(request.user, 'courier_set'):
+    try:
+        courier = request.user.courier_set.get()
+    except Courier.DoesNotExist:
+        messages.warning(request, 'Курьер не найден')
         return redirect('register')
     else:
-        courier = request.user.courier_set.get()
         if courier.profile is None:
             return redirect('profile_create')
 
         if request.method == 'POST':
             if 'get_new_orders' in request.GET:
+                token, created = Token.objects.get_or_create(user=request.user)
                 response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/assign', json={
-                    "courier_id": courier.profile.courier_id
+                    "courier_id": courier.profile.courier_id,
+                    'token': token.key,
+                    'user_id': request.user.id
                 })
                 if not response.ok:
                     messages.error(request, response.text)
@@ -162,10 +176,13 @@ def profile(request):
                         logging.info(f'Новые заказы: {" ".join(map(str, result))}')
 
             if 'complete_order' in request.GET:
+                token, created = Token.objects.get_or_create(user=request.user)
                 response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/complete', json={
                     "courier_id": courier.profile.courier_id,
                     "order_id": request.GET['complete_order'],
-                    "complete_time": str(timezone.localtime().strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
+                    "complete_time": str(timezone.localtime().strftime('%Y-%m-%dT%H:%M:%S.%fZ')),
+                    'token': token.key,
+                    'user_id': request.user.id
                 })
                 if not response.ok:
                     messages.error(request, response.text)
@@ -175,7 +192,11 @@ def profile(request):
                     messages.success(request, response.text)
                     logging.info(response.text)
 
-    response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}')
+    token, created = Token.objects.get_or_create(user=request.user)
+    response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}', json={
+        'token': token.key,
+        'user_id': request.user.id
+    })
     if not response.ok:
         messages.error(request, response.text)
         logging.info(response.text)
@@ -197,20 +218,24 @@ def profile_create(request):
         if form.is_valid():
 
             courier_profile = form.save(commit=False)
+            token, created = Token.objects.get_or_create(user=request.user)
             response = requests.post(f'http://{request.META["HTTP_HOST"]}/couriers', json={
                 "data": [
                     {
                         "courier_id": courier_profile.courier_id,
                         "courier_type": courier_profile.courier_type,
                         "regions": courier_profile.regions,
-                        "working_hours": courier_profile.working_hours
+                        "working_hours": courier_profile.working_hours,
                     }
-                ]
+                ],
+                'token': token.key,
+                'user_id': request.user.id
             })
 
             if not response.ok:
                 logging.info(response.text)
                 messages.error(request, response.text)
+                return render(request, 'profile_create.html', {'form': form})
             else:
                 actual_courier_profile = CourierProfile.objects.get(courier_id=courier_profile.courier_id)
                 Courier.objects.filter(id=request.user.courier_set.get().id).update(profile=actual_courier_profile)
@@ -243,11 +268,14 @@ def edit(request):
         form = ProfileCreationForm(data=request.POST)
         if form.is_valid():
             courier_profile = form.save(commit=False)
+            token, created = Token.objects.get_or_create(user=request.user)
             response = requests.patch(f'http://{request.META["HTTP_HOST"]}/couriers/{current_profile.courier_id}',
                                       json={
                                           "courier_type": courier_profile.courier_type,
                                           "regions": courier_profile.regions,
-                                          "working_hours": courier_profile.working_hours
+                                          "working_hours": courier_profile.working_hours,
+                                          'token': token.key,
+                                          'user_id': request.user.id
                                       })
 
             if not response.ok:
@@ -267,3 +295,40 @@ def edit(request):
             data={'courier_type': str(current_profile.courier_type), 'regions': str(current_profile.regions),
                   'working_hours': str(current_profile.working_hours).replace("'", '"')})
     return render(request, 'profile_edit.html', {'form': form})
+
+
+def create_order(request):
+    if not request.user.is_staff:
+        raise Http404()
+
+    if request.method == 'POST':
+        form = CreateOrderForm(data=request.POST)
+        if form.is_valid():
+            order = form.save(commit=False)
+            token, created = Token.objects.get_or_create(user=request.user)
+            response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders', json={
+                "data": [
+                    {
+                        "order_id": order.order_id,
+                        "weight": float(order.weight),
+                        "region": order.region,
+                        "delivery_hours": order.delivery_hours
+                    }
+                ],
+                'token': token.key,
+                'user_id': request.user.id
+            })
+            if response.ok:
+                messages.success(request, 'Заказ успешно создан')
+                logging.info('Заказ успешно создан')
+                return render(request, 'order_create.html', {'form': CreateOrderForm()})
+            else:
+                messages.error(request, f'Ошибка: {response.text}')
+                logging.info(f'Ошибка: {response.text}')
+        else:
+            messages.error(request, 'Некоторые данные введены неверно')
+            logging.info('Некоторые данные введены неверно')
+    else:
+        form = CreateOrderForm()
+
+    return render(request, 'order_create.html', {'form': form})

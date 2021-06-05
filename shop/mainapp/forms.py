@@ -77,7 +77,6 @@ class CourierRegisterForm(forms.Form):
         return courier, self.cleaned_data['password']
 
 
-# TODO забыли пароль
 class CourierAuthorizationForm(AuthenticationForm):
     username = forms.EmailField(widget=forms.TextInput(attrs={'class': 'form-control', 'autofocus': True}),
                                 help_text='Для авторизации укажите пожалуйста свой адрес электронной почты (E-mail)',
@@ -135,3 +134,46 @@ class ProfileCreationForm(forms.ModelForm):
                 courier_id = profiles[0].courier_id + 1
 
             return CourierProfile(**self.cleaned_data, courier_id=courier_id)
+
+
+class CreateOrderForm(forms.ModelForm):
+    class Meta:
+        model = Order
+        fields = ['weight', 'region', 'delivery_hours']
+        widgets = {
+            'weight': forms.NumberInput(attrs={'class': 'form-control'}),
+            'region': forms.NumberInput(attrs={'class': 'form-control'}),
+            'delivery_hours': forms.TextInput(attrs={'class': 'form-control'})
+        }
+        help_texts = {
+            'weight': 'Вес заказа (кг)',
+            'region': 'Номер региона заказа',
+            'delivery_hours': 'Удобные часы доставки в формате ["HH:MM-HH:MM", "HH:MM-HH:MM", ...]'
+        }
+
+    def as_div(self):
+        """Return this form rendered as HTML <div>s."""
+        return self._html_output(
+            normal_row='<div%(html_class_attr)s>%(label)s %(field)s%(help_text)s</div><br>',
+            error_row='%s',
+            row_ender='</div>',
+            help_text_html=' <span class="helptext">%s</span>',
+            errors_on_separate_row=True,
+        )
+
+    def save(self, commit=True):
+        if commit:
+            super().save(commit)
+        else:
+            orders = Order.objects.all().order_by('-order_id')
+            if len(orders) == 0:
+                order_id = 0
+            else:
+                order_id = orders[0].order_id + 1
+
+            order = Order(order_id=order_id,
+                          weight=self.cleaned_data['weight'],
+                          region=self.cleaned_data['region'],
+                          delivery_hours=self.cleaned_data['delivery_hours'])
+
+            return order
