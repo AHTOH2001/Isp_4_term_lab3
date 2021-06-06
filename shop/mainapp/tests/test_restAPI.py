@@ -1,15 +1,17 @@
 from datetime import datetime
 
 from django.test import TestCase
+from django.contrib.auth.models import User
 from rest_framework import status
-from .models import CourierProfile, Order
+from mainapp.models import CourierProfile, Order
 from django.test import Client
 from django.utils import timezone
+from rest_framework.authtoken.models import Token
 
 
 # raise Exception((response.content, response.status_code))
 
-class AuthorListViewTest(TestCase):
+class RestAPITest(TestCase):
     @classmethod
     def setUpTestData(cls):
         CourierProfile.objects.create(
@@ -67,6 +69,13 @@ class AuthorListViewTest(TestCase):
             region=12,
             delivery_hours=["21:00-22:00"]
         )
+        cls.user = User.objects.create(username='test', password='test')
+        cls.token, created = Token.objects.get_or_create(user=cls.user)
+        # cls.client_class.force_login(user=test_user)
+
+    # def setUp(self) -> None:
+    #     self.user = User.objects.get(pk=1)
+    #     self.token, created = Token.objects.get_or_create(user=self.user)
 
     def test_success_order_create(self):
         response = self.client.post('/orders', {
@@ -77,7 +86,9 @@ class AuthorListViewTest(TestCase):
                     "region": 22,
                     "delivery_hours": ["09:00-12:00", "16:00-21:30"]
                 }
-            ]
+            ],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertJSONEqual(response.content, {"orders": [{"id": 10}]})
@@ -91,7 +102,9 @@ class AuthorListViewTest(TestCase):
                     "regions": [1, 12, 22],
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
                 }
-            ]
+            ],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertJSONEqual(response.content, {"couriers": [{"id": 4}]})
@@ -115,10 +128,11 @@ class AuthorListViewTest(TestCase):
                     "courier_type": "footage",
                     "working_hours": ["11:35-14:05", "09:00-11:00"]
                 }
-            ]
+            ],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertJSONEqual(response.content, {"validation_error": {"couriers": [{"id": 5}, {"id": 8}]}})
 
     def test_bad_order_create(self):
         response = self.client.post('/orders', {
@@ -147,26 +161,33 @@ class AuthorListViewTest(TestCase):
                     "region": 20,
                     "delivery_hours": ["09:00-12:00", "16:00-21:30"]
                 }
-            ]
+            ],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertJSONEqual(response.content, {"validation_error": {"orders": [{"id": 8}, {"id": 10}, {"id": 1}]}})
 
     def test_bad_courier_get(self):
-        response = self.client.get('/couriers/4')
+        response = self.client.get('/couriers/4', {
+            'user_id': self.user.id,
+            'token': self.token.key}, content_type='applications/json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_success_courier_get(self):
-        response = self.client.get('/couriers/2')
+        response = self.client.get('/couriers/2', {
+            'user_id': self.user.id,
+            'token': self.token.key}, content_type='applications/json')
         self.assertJSONEqual(response.content,
                              {"courier_id": 2, "courier_type": "bike", "regions": [1, 22],
-                              "working_hours": ["09:00-18:00"], "earning": 0})
+                              "working_hours": ["09:00-18:00"], "earnings": 0})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_courier_patch_create(self):
         response = self.client.patch('/couriers/2', {
             "regions": [11, 2, 12],
-            "working_hours": ["09:00-15:00"]
+            "working_hours": ["09:00-15:00"],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
 
         self.assertJSONEqual(response.content,
@@ -175,78 +196,113 @@ class AuthorListViewTest(TestCase):
                               })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        response = self.client.get('/couriers/2')
+        response = self.client.get('/couriers/2', json={
+            'user_id': self.user.id,
+            'token': self.token.key
+        }, content_type='application/json')
         self.assertJSONEqual(response.content,
                              {"courier_id": 2, "courier_type": "bike", "regions": [11, 2, 12],
-                              "working_hours": ["09:00-15:00"], "earning": 0})
+                              "working_hours": ["09:00-15:00"], "earnings": 0})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         response = self.client.patch('/couriers/13', {
             "regions": [11, 2, 12],
-            "working_hours": ["09:00-15:00"]
+            "working_hours": ["09:00-15:00"],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-        response = self.client.patch('/couriers/2', {"strange_field": 123}, content_type='application/json')
+        response = self.client.patch('/couriers/2', {"strange_field": 123,
+                                                     'user_id': self.user.id,
+                                                     'token': self.token.key
+                                                     }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_assign_couriers(self):
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key}, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.content.startswith(b'{"orders":[{"id":4},{"id":2}],"assign_time":"'))
 
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key
+                                                       }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.content.startswith(b'{"orders":[{"id":4},{"id":2}],"assign_time":"'))
+        self.assertTrue(response.content.startswith(b'{"orders":[{"id":3}],"assign_time":"'))
 
-        response = self.client.post('/orders/assign', {"courier_id": 1}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 1,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key
+                                                       }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.content.startswith(b'{"orders":[{"id":1}],"assign_time":"'))
 
-        response = self.client.post('/orders/assign', {"courier_id": 3}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 3,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key
+                                                       }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.content.startswith(b'{"orders":[{"id":6},{"id":3}],"assign_time":"'))
+        self.assertTrue(response.content.startswith(b'{"orders":[{"id":6}],"assign_time":"'))
 
-        response = self.client.post('/orders/assign', {"courier_id": 5}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 5,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key
+                                                       }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_bad_complete_couriers(self):
         response = self.client.post('/orders/complete', {
             "courier_id": 1,
             "order_id": 8,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post('/orders/complete', {
             "courier_id": 15,
             "order_id": 2,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post('/orders/complete', {
             "courier_id": 1,
             "order_id": 8,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post('/orders/complete', {
             "courier_id": 1,
             "order_id": 2,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key
+                                                       }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.content.startswith(b'{"orders":[{"id":4},{"id":2}],"assign_time":"'))
 
         response = self.client.post('/orders/complete', {
             "courier_id": 2,
             "order_id": 4,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertJSONEqual(response.content, {"order_id": 4})
@@ -254,48 +310,64 @@ class AuthorListViewTest(TestCase):
         response = self.client.post('/orders/complete', {
             "courier_id": 2,
             "order_id": 4,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
         response = self.client.post('/orders/complete', {
             "courier_id": 3,
             "order_id": 2,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_complete_couriers(self):
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key}, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.content.startswith(b'{"orders":[{"id":4},{"id":2}],"assign_time":"'))
 
         response = self.client.post('/orders/complete', {
             "courier_id": 2,
             "order_id": 4,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertJSONEqual(response.content, {"order_id": 4})
 
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key}, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.content.startswith(b'{"orders":[{"id":2}],"assign_time":"'))
+        self.assertTrue(response.content.startswith(b'{"orders":[{"id":3}],"assign_time":"'))
 
         response = self.client.post('/orders/complete', {
             "courier_id": 2,
             "order_id": 2,
-            "complete_time": "2021-03-18T18:18:01.42Z"
+            "complete_time": "2021-03-18T18:18:01.42Z",
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertJSONEqual(response.content, {"order_id": 2})
 
-        response = self.client.post('/orders/assign', {"courier_id": 2}, content_type='application/json')
+        response = self.client.post('/orders/assign', {"courier_id": 2,
+                                                       'user_id': self.user.id,
+                                                       'token': self.token.key}, content_type='application/json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.content.startswith(b'{"orders":[{"id":3}],"assign_time":"'))
+        self.assertTrue(response.content.startswith(b'{"orders":[]}'))
 
-        response = self.client.get('/couriers/2')
-        self.assertTrue(response.content.endswith(b',"earning":5000}'))
+        response = self.client.get('/couriers/2', {
+            'user_id': self.user.id,
+            'token': self.token.key}, content_type='applications/json')
+        self.assertTrue(response.content.endswith(b',"earnings":5000}'))
 
         # raise Exception((response.content, response.status_code))
 
@@ -320,7 +392,9 @@ class AuthorListViewTest(TestCase):
                     "regions": [12, 22, 23, 33],
                     "working_hours": []
                 }
-            ]
+            ],
+            'user_id': self.user.id,
+            'token': self.token.key
         }, content_type='application/json')
 
         self.assertEqual(response.status_code, 400)

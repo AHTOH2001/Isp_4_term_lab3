@@ -13,7 +13,7 @@ from django.utils import timezone
 from ..utils import valid_orders_for_courier
 
 
-def check_creditnails(request):
+def check_credentials(request):
     if 'user_id' not in request.data:
         raise PermissionError('User id missing')
     user = User.objects.get(id=request.data.pop('user_id'))
@@ -31,7 +31,7 @@ class CouriersCreateView(generics.CreateAPIView):
     serializer_class = CouriersCreateSerializer
 
     def post(self, request, *args, **kwargs):
-        check_creditnails(request)
+        check_credentials(request)
         result = super().post(request, *args, **kwargs)
         content = {'couriers': [{'id': courier['courier_id']} for courier in result.data['data']]}
         return Response(content, status=result.status_code)
@@ -46,7 +46,7 @@ class OrdersCreateView(generics.CreateAPIView):
     serializer_class = OrdersCreateSerializer
 
     def post(self, request, *args, **kwargs):
-        check_creditnails(request)
+        check_credentials(request)
         result = super().post(request, *args, **kwargs)
         content = {'orders': [{'id': order['order_id']} for order in result.data['data']]}
         return Response(content, status=result.status_code)
@@ -57,7 +57,7 @@ class OrdersListView(generics.ListAPIView):
     queryset = Order.objects.filter(is_done=False).order_by('weight')
 
     def get(self, request, *args, **kwargs):
-        check_creditnails(request)
+        check_credentials(request)
         return super().get(self, request, *args, **kwargs)
 
 
@@ -71,7 +71,7 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = CourierProfile.objects.all()
 
     def patch(self, request, *args, **kwargs):
-        check_creditnails(request)
+        check_credentials(request)
         courier = self.get_object()
         serializer = self.get_serializer(courier, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -91,7 +91,7 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         return Response(serializer.data)
 
     def get(self, request, *args, **kwargs):
-        check_creditnails(request)
+        # check_credentials(request)
         courier = self.get_object()
         res = {"courier_id": courier.courier_id, "courier_type": courier.courier_type, "regions": courier.regions,
                "working_hours": courier.working_hours}
@@ -107,7 +107,7 @@ class CourierRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 @api_view(['POST'])
 def orders_assign(request):
     if request.method == 'POST':
-        check_creditnails(request)
+        check_credentials(request)
         serializer = OrdersAssignSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -139,7 +139,7 @@ def orders_assign(request):
 @api_view(['POST'])
 def order_complete(request):
     if request.method == 'POST':
-        check_creditnails(request)
+        check_credentials(request)
         serializer = OrderCompleteSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

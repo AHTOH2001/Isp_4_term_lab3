@@ -44,7 +44,7 @@ def register(request):
                 return render(request, 'register.html', {'form': form})
             courier, raw_pass = form.save()
 
-            confirmation_url = request.META["HTTP_HOST"] + urls.reverse(
+            confirmation_url = request.META["REMOTE_ADDR"] + ':' + request.META["SERVER_PORT"] + urls.reverse(
                 register_complete) + f'?login={courier.user.email}&code={get_code(courier.user.email, "abs", 20)}'
             email_message = f'''Здравствуйте, уважаемый {courier.user.last_name} {courier.user.first_name}!
 
@@ -65,18 +65,11 @@ def register(request):
 С уважением, администрация курьерни'''
 
             thread = threading.Thread(target=send_mail, args=(
-                f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
+                f'Подтверждение регистрации на сайте {request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}',
                 email_message,
                 'CheekLitBot@gmail.com',
                 [courier.user.email]), kwargs={'fail_silently': False})
             thread.start()
-            # send_mail(
-            #     f'Подтверждение регистрации на сайте {request.META["HTTP_HOST"]}',
-            #     email_message,
-            #     'CheekLitBot@gmail.com',
-            #     [courier.user.email],
-            #     fail_silently=False,
-            # )
             messages.success(request, 'Пользователь успешно создан, проверьте почту и подтвердите регистрацию')
             logging.info('Пользователь успешно создан, проверьте почту и подтвердите регистрацию')
             return redirect('authorize')
@@ -156,11 +149,12 @@ def profile(request):
         if request.method == 'POST':
             if 'get_new_orders' in request.GET:
                 token, created = Token.objects.get_or_create(user=request.user)
-                response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/assign', json={
-                    "courier_id": courier.profile.courier_id,
-                    'token': token.key,
-                    'user_id': request.user.id
-                })
+                response = requests.post(
+                    f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/orders/assign', json={
+                        "courier_id": courier.profile.courier_id,
+                        'token': token.key,
+                        'user_id': request.user.id
+                    })
                 if not response.ok:
                     messages.error(request, response.text)
                     logging.error(response.text)
@@ -177,13 +171,14 @@ def profile(request):
 
             if 'complete_order' in request.GET:
                 token, created = Token.objects.get_or_create(user=request.user)
-                response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders/complete', json={
-                    "courier_id": courier.profile.courier_id,
-                    "order_id": request.GET['complete_order'],
-                    "complete_time": str(timezone.localtime().strftime('%Y-%m-%dT%H:%M:%S.%fZ')),
-                    'token': token.key,
-                    'user_id': request.user.id
-                })
+                response = requests.post(
+                    f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/orders/complete', json={
+                        "courier_id": courier.profile.courier_id,
+                        "order_id": request.GET['complete_order'],
+                        "complete_time": str(timezone.localtime().strftime('%Y-%m-%dT%H:%M:%S.%fZ')),
+                        'token': token.key,
+                        'user_id': request.user.id
+                    })
                 if not response.ok:
                     messages.error(request, response.text)
                     logging.info(response.text)
@@ -193,10 +188,12 @@ def profile(request):
                     logging.info(response.text)
 
     token, created = Token.objects.get_or_create(user=request.user)
-    response = requests.get(f'http://{request.META["HTTP_HOST"]}/couriers/{courier.profile.courier_id}', json={
-        'token': token.key,
-        'user_id': request.user.id
-    })
+    response = requests.get(
+        f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/couriers/{courier.profile.courier_id}',
+        json={
+            'token': token.key,
+            'user_id': request.user.id
+        })
     if not response.ok:
         messages.error(request, response.text)
         logging.info(response.text)
@@ -219,18 +216,19 @@ def profile_create(request):
 
             courier_profile = form.save(commit=False)
             token, created = Token.objects.get_or_create(user=request.user)
-            response = requests.post(f'http://{request.META["HTTP_HOST"]}/couriers', json={
-                "data": [
-                    {
-                        "courier_id": courier_profile.courier_id,
-                        "courier_type": courier_profile.courier_type,
-                        "regions": courier_profile.regions,
-                        "working_hours": courier_profile.working_hours,
-                    }
-                ],
-                'token': token.key,
-                'user_id': request.user.id
-            })
+            response = requests.post(
+                f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/couriers', json={
+                    "data": [
+                        {
+                            "courier_id": courier_profile.courier_id,
+                            "courier_type": courier_profile.courier_type,
+                            "regions": courier_profile.regions,
+                            "working_hours": courier_profile.working_hours,
+                        }
+                    ],
+                    'token': token.key,
+                    'user_id': request.user.id
+                })
 
             if not response.ok:
                 logging.info(response.text)
@@ -269,14 +267,15 @@ def edit(request):
         if form.is_valid():
             courier_profile = form.save(commit=False)
             token, created = Token.objects.get_or_create(user=request.user)
-            response = requests.patch(f'http://{request.META["HTTP_HOST"]}/couriers/{current_profile.courier_id}',
-                                      json={
-                                          "courier_type": courier_profile.courier_type,
-                                          "regions": courier_profile.regions,
-                                          "working_hours": courier_profile.working_hours,
-                                          'token': token.key,
-                                          'user_id': request.user.id
-                                      })
+            response = requests.patch(
+                f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/couriers/{current_profile.courier_id}',
+                json={
+                    "courier_type": courier_profile.courier_type,
+                    "regions": courier_profile.regions,
+                    "working_hours": courier_profile.working_hours,
+                    'token': token.key,
+                    'user_id': request.user.id
+                })
 
             if not response.ok:
                 messages.error(request, response.text)
@@ -299,25 +298,26 @@ def edit(request):
 
 def create_order(request):
     if not request.user.is_staff:
-        raise Http404()
+        return redirect('home')
 
     if request.method == 'POST':
         form = CreateOrderForm(data=request.POST)
         if form.is_valid():
             order = form.save(commit=False)
             token, created = Token.objects.get_or_create(user=request.user)
-            response = requests.post(f'http://{request.META["HTTP_HOST"]}/orders', json={
-                "data": [
-                    {
-                        "order_id": order.order_id,
-                        "weight": float(order.weight),
-                        "region": order.region,
-                        "delivery_hours": order.delivery_hours
-                    }
-                ],
-                'token': token.key,
-                'user_id': request.user.id
-            })
+            response = requests.post(f'http://{request.META["REMOTE_ADDR"] + ":" + request.META["SERVER_PORT"]}/orders',
+                                     json={
+                                         "data": [
+                                             {
+                                                 "order_id": order.order_id,
+                                                 "weight": float(order.weight),
+                                                 "region": order.region,
+                                                 "delivery_hours": order.delivery_hours
+                                             }
+                                         ],
+                                         'token': token.key,
+                                         'user_id': request.user.id
+                                     })
             if response.ok:
                 messages.success(request, 'Заказ успешно создан')
                 logging.info('Заказ успешно создан')
