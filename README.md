@@ -3,6 +3,7 @@
 ### Docker-compose running:
 
 1. In terminal `docker-compose up`
+2. Attention: Server will be available on 127.0.0.1:8080
 
 ### Installing, deployment and running manual:
 
@@ -13,7 +14,7 @@
    more details like language code, time zone and allowed hosts
 4. Switch to the folder `shop` and make migrations using command `python3 manage.py makemigrations`, and then migrate
    them using command `python3 manage.py migrate`
-5. Run server using command `python3 manage.py runserver 0.0.0.0:8080`, than if you wish you can stop service
+5. Run server using command `python3 manage.py runserver 127.0.0.1:8080`, than if you wish you can stop service
    using `ctrl+C`
 
 ### Tests running manual:
