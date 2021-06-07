@@ -67,31 +67,31 @@ WSGI_APPLICATION = 'shop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'RestAPIdb',
-        'USER': 'RestAPIuser',
-        'PASSWORD': 'Dk0p4XGxP4',
-        # 'HOST': 'mysqldb',
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1",
-            'charset': 'utf8mb4',
-        },
-    }
-}
-
 # DATABASES = {
 #     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
+#         'ENGINE': 'django.db.backends.mysql',
 #         'NAME': 'RestAPIdb',
 #         'USER': 'RestAPIuser',
 #         'PASSWORD': 'Dk0p4XGxP4',
-#         'HOST': 'db',
-#         'PORT': 5432,
+#         # 'HOST': 'mysqldb',
+#         'PORT': '3306',
+#         'OPTIONS': {
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', innodb_strict_mode=1",
+#             'charset': 'utf8mb4',
+#         },
 #     }
 # }
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'RestAPIdb',
+        'USER': 'RestAPIuser',
+        'PASSWORD': 'Dk0p4XGxP4',
+        'HOST': 'db',
+        'PORT': 5432,
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
